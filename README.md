@@ -44,5 +44,5 @@ The dataset, sourced from the [München Open Data Portal](https://opendata.muenc
 1. Install Python 3.8 or above.
 2. Clone this repository:
    ```bash
-   git clone https://github.com/your-username/munich-accident-predictions.git
-   cd munich-accident-predictions
+   git clone https://github.com/monikagupta5/AIAccidentPrediction.git
+   cd AIAccidentPrediction
