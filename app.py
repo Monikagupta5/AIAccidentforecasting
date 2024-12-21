@@ -1,68 +1,57 @@
-from fastapi import FastAPI, HTTPException
+import streamlit as st
 import pandas as pd
 import numpy as np
 from statsmodels.tsa.arima.model import ARIMA
-import os
-
-app = FastAPI(
-    title="AI Accident Prediction API",
-    description="An API to predict accident numbers using a pre-trained ARIMA model.",
-    version="1.0.0"
-)
 
 # Load the pre-processed and cleaned data
-try:
-    DATA_FILE = "cleaned_data.csv"
-    df = pd.read_csv(DATA_FILE, parse_dates=['Date'], index_col='Date')
-except FileNotFoundError:
-    df = None  # Handle gracefully if the data is missing
+@st.cache
+def load_data():
+    try:
+        return pd.read_csv("cleaned_data.csv", parse_dates=['Date'], index_col='Date')
+    except FileNotFoundError:
+        st.error("The file 'cleaned_data.csv' is missing.")
+        return None
+
+df = load_data()
 
 # ARIMA Model Configuration
-ORDER = (2, 1, 1)  # Replace with your actual order
-model = None
-if df is not None:
-    try:
-        model = ARIMA(df['Value'], order=ORDER).fit()
-    except Exception as e:
-        print(f"Error training ARIMA model: {e}")
-
-@app.get("/")
-async def root():
-    """Root endpoint."""
-    return {"message": "Welcome to the AI Accident Prediction API!"}
-
-@app.get("/health")
-async def health_check():
-    """Check if the app is running and model is ready."""
-    if model is None or df is None:
-        return {"status": "error", "message": "Model or data is not ready."}
-    return {"status": "ok", "message": "App is running and model is ready."}
-
-@app.post("/predict")
-async def predict(year: int, month: int):
+@st.cache(allow_output_mutation=True)
+def train_model(data):
     """
-    Predict accident numbers for a given year and month.
-
-    Parameters:
-    - year: int (e.g., 2021)
-    - month: int (1-12)
-
-    Returns:
-    - {"prediction": value}
+    Train the ARIMA model based on the loaded dataset.
     """
-    # Validate inputs
-    if not (1 <= month <= 12):
-        raise HTTPException(status_code=400, detail="Invalid month. Must be between 1 and 12.")
-    if year < 2000 or year > 2100:  # Example range for valid years
-        raise HTTPException(status_code=400, detail="Invalid year. Must be between 2000 and 2100.")
-
-    if model is None:
-        raise HTTPException(status_code=500, detail="Model is not loaded. Cannot make predictions.")
-
-    # Create the index for forecasting
     try:
-        date_index = pd.date_range(f"{year}-{month:02d}-01", periods=1, freq='MS')
-        forecast = model.forecast(steps=len(date_index))
-        return {"prediction": float(forecast[0])}
+        order = (2, 1, 1)  # Replace with your actual ARIMA order
+        return ARIMA(data['Value'], order=order).fit()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+        st.error(f"Error training ARIMA model: {e}")
+        return None
+
+model = train_model(df) if df is not None else None
+
+# Streamlit App Layout
+st.title("AI Accident Prediction")
+st.write("Predict accident numbers using a pre-trained ARIMA model.")
+
+# Sidebar for inputs
+st.sidebar.header("Prediction Input")
+year = st.sidebar.number_input("Year", min_value=2000, max_value=2100, value=2023)
+month = st.sidebar.number_input("Month (1-12)", min_value=1, max_value=12, value=1)
+
+# Check if the model is ready
+if model is None:
+    st.error("Model is not loaded. Ensure 'cleaned_data.csv' is present and the model can be trained.")
+else:
+    # Prediction button
+    if st.sidebar.button("Predict"):
+        try:
+            # Validate inputs
+            if not (1 <= month <= 12):
+                st.error("Invalid month. Must be between 1 and 12.")
+            else:
+                # Generate prediction
+                date_index = pd.date_range(f"{year}-{month:02d}-01", periods=1, freq='MS')
+                forecast = model.forecast(steps=len(date_index))
+                st.success(f"Prediction for {year}-{month:02d}: {forecast[0]:.2f}")
+        except Exception as e:
+            st.error(f"Prediction failed: {e}")
