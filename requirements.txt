@@ -1,9 +1,20 @@
+# Essential dependencies (add distutils, wheel, and setuptools first)
+setuptools==68.0.0  # Avoid incompatibility with Python 3.12
+wheel
+Cython==0.29.36
+numpy==1.23.5
+scipy==1.10.1
+pandas==1.5.3
+scikit-learn==1.1.3
+statsmodels==0.13.5
+joblib==1.2.0
+
+# Core application dependencies
 fastapi==0.100.0
 uvicorn[standard]==0.23.0
-pydantic==1.10.9
-numpy==1.23.5
-pandas==1.5.3
-scikit-learn==1.2.2
-statsmodels==0.13.5
+
+# Add pmdarima at the end
 pmdarima==2.0.3
-streamlit
+
+# Streamlit for local development (if necessary)
+streamlit==1.25.0
